@@ -17,7 +17,6 @@ class AuthManager {
     }
 
     login(email, password) {
-        // Mock authentication
         this.user = { id: Date.now(), email, name: email.split('@')[0], status: 'Premium' };
         localStorage.setItem('ha_user', JSON.stringify(this.user));
         this.updateUI();
@@ -27,7 +26,6 @@ class AuthManager {
     }
 
     register(name, email, password) {
-        // Mock registration
         this.user = { id: Date.now(), email, name, status: 'Premium' };
         localStorage.setItem('ha_user', JSON.stringify(this.user));
         this.updateUI();
@@ -37,7 +35,6 @@ class AuthManager {
     }
 
     googleLogin() {
-        // Mock Google authentication
         this.user = { id: Date.now(), email: 'google.user@example.com', name: 'Google User', status: 'Premium' };
         localStorage.setItem('ha_user', JSON.stringify(this.user));
         this.updateUI();
@@ -52,12 +49,13 @@ class AuthManager {
         this.updateUI();
         loadProfile();
         loadHistory();
-        showSection('scanner-section');
+        showSection('scan-section');
     }
 
     updateUI() {
         const guestView = document.getElementById('guest-profile');
         const userView = document.getElementById('user-profile');
+        if (!guestView || !userView) return;
 
         if (this.user) {
             guestView.classList.add('hidden');
@@ -80,20 +78,20 @@ window.authManager = authManager;
 
 // DOM Elements
 const sections = document.querySelectorAll('.section');
-const navItems = document.querySelectorAll('.nav-item');
-const startScannerBtn = document.getElementById('start-scanner-btn');
+const navTabs = document.querySelectorAll('.nav-tab');
+const startScannerBtn = document.getElementById('trigger-scan');
 const barcodeInput = document.getElementById('barcode-input');
 const manualSearchBtn = document.getElementById('manual-search-btn');
-const productContent = document.getElementById('product-content');
-const historyList = document.getElementById('history-list');
+const recentScansList = document.getElementById('recent-scans-list');
+const fullHistoryList = document.getElementById('full-history-list');
+const productDetailsPage = document.getElementById('product-details-page');
+const productDetailsContent = document.getElementById('product-details-content');
 
 // State
 let profile = {
     vegan: false,
-    vegetarian: false,
     gluten_free: false,
-    nuts: false,
-    dairy: false
+    nuts: false
 };
 
 // Initialization
@@ -103,33 +101,16 @@ document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
     setupScanner();
     setupEventListeners();
-    registerServiceWorker();
 });
-
-function registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').then(() => {
-            console.log('Service Worker Registered');
-        });
-    }
-}
 
 // Navigation Logic
 function setupNavigation() {
-    navItems.forEach(item => {
-        item.addEventListener('click', () => {
-            const target = item.getAttribute('data-target');
+    navTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const target = tab.getAttribute('data-target');
             showSection(target);
-
-            navItems.forEach(n => n.classList.remove('active'));
-            item.classList.add('active');
-        });
-    });
-
-    document.querySelectorAll('.back-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            showSection('scanner-section');
-            navItems[0].click();
+            navTabs.forEach(n => n.classList.remove('active'));
+            tab.classList.add('active');
         });
     });
 }
@@ -143,44 +124,59 @@ function showSection(id) {
 
 // Scanner Logic
 function setupScanner() {
+    if (!document.getElementById("scanner-container")) return;
     scanner = new Html5Qrcode("scanner-container");
 
     startScannerBtn.addEventListener('click', () => {
-        const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+        if (scanner.getState() === 2) { // Already scanning
+            return;
+        }
 
+        const config = { fps: 15, qrbox: { width: 250, height: 150 } };
         scanner.start(
             { facingMode: "environment" },
             config,
             onScanSuccess,
-            onScanError
+            (err) => { }
         ).then(() => {
-            startScannerBtn.style.display = 'none';
+            console.log("Scanner started");
         }).catch(err => {
-            alert("Camera access failed: " + err);
+            displayCameraError(err);
         });
     });
 }
 
 function onScanSuccess(decodedText) {
-    scanner.stop();
-    startScannerBtn.style.display = 'block';
+    if (scanner) scanner.stop();
     fetchProduct(decodedText);
 }
 
-function onScanError(err) {
-    // Silent fail for continuous scanning
+function displayCameraError(error) {
+    const container = document.getElementById("scanner-container");
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="camera-error-container">
+            <i data-lucide="camera-off" class="camera-error-icon" size="48"></i>
+            <div class="camera-error-title">Camera Access Denied</div>
+            <div class="camera-error-msg">
+                We need camera permission to scan barcodes. 
+                Please enable camera access in your browser settings and try again.
+            </div>
+            <button class="camera-retry-btn" onclick="location.reload()">Retry Now</button>
+        </div>
+    `;
+    lucide.createIcons();
 }
 
-// API & Data Fetching
 async function fetchProduct(barcode) {
-    showSection('product-section');
-    productContent.innerHTML = '<div class="glass-panel" style="text-align: center;">Searching for product...</div>';
+    openProductDetails('Searching...');
 
-    // Check Local History first (Offline support)
-    const history = JSON.parse(localStorage.getItem('ha_history') || '[]');
+    // Check Cache
+    const key = authManager.getDataKey('ha_history');
+    const history = JSON.parse(localStorage.getItem(key) || '[]');
     const cached = history.find(p => p.code === barcode);
 
-    // If offline, try to show cached data even if it's partial, or use it as a fallback
     if (!navigator.onLine && cached && cached.fullData) {
         renderProduct(cached.fullData);
         return;
@@ -194,23 +190,36 @@ async function fetchProduct(barcode) {
             renderProduct(data.product);
             saveToHistory(data.product);
         } else {
-            productContent.innerHTML = `
-                <div class="glass-panel" style="text-align: center;">
+            productDetailsContent.innerHTML = `
+                <div class="glass-panel" style="text-align: center; padding: 40px 20px;">
+                    <i data-lucide="search-x" size="48" style="color: var(--text-muted); margin-bottom: 20px;"></i>
                     <h3>Product Not Found</h3>
                     <p class="subtitle">Barcode: ${barcode}</p>
                 </div>
             `;
+            lucide.createIcons();
         }
     } catch (err) {
         if (cached && cached.fullData) {
             renderProduct(cached.fullData);
         } else {
-            productContent.innerHTML = `<div class="glass-panel" style="text-align: center; color: var(--danger);">Network Error. Please check your connection.</div>`;
+            productDetailsContent.innerHTML = `<div class="glass-panel" style="text-align: center; color: var(--danger); padding: 40px 20px;">Network Error. Check connection.</div>`;
         }
     }
 }
 
 // UI Rendering
+function openProductDetails(initialMsg = '') {
+    productDetailsPage.classList.add('active');
+    if (initialMsg) {
+        productDetailsContent.innerHTML = `<div style="text-align:center; padding: 50px;">${initialMsg}</div>`;
+    }
+}
+
+window.closeProductDetails = () => {
+    productDetailsPage.classList.remove('active');
+};
+
 function renderProduct(product) {
     const {
         product_name,
@@ -219,272 +228,192 @@ function renderProduct(product) {
         nutrition_grades,
         ecoscore_grade,
         ingredients_text,
-        additives_tags,
-        nutriscore_data,
         generic_name
     } = product;
 
-    const nutriClass = `score-${(nutrition_grades || 'e').toLowerCase()}`;
-    const ecoClass = `score-${(ecoscore_grade || 'e').toLowerCase()}`;
-
+    const nutriClass = `nutri-${(nutrition_grades || 'e').toLowerCase()}`;
     const analysis = analyzeDietary(product);
     const insights = getProductInsights(product);
 
-    productContent.innerHTML = `
-        <div class="product-hero glass-panel">
-            <span class="label-small">Product Scanned</span>
-            <h1 class="product-name" style="margin-bottom: 5px;">${product_name || 'Unknown Product'}</h1>
+    productDetailsContent.innerHTML = `
+        <div class="glass-panel" style="text-align: center; margin-bottom: 20px; padding: 20px;">
+            <img src="${image_front_url || 'https://via.placeholder.com/150'}" style="width: 150px; height: 150px; object-fit: contain; margin-bottom: 15px;">
+            <h1 style="font-size: 1.5rem; margin-bottom: 5px;">${product_name || 'Unknown'}</h1>
             <p class="subtitle">${brands || 'No Brand'}</p>
         </div>
 
-        <div class="feature-block plain-block">
-            <div class="feature-header">
-                <i data-lucide="file-text" size="16"></i>
-                <span>Description</span>
+        <div class="glass-panel" style="margin-bottom: 20px; border-left: 4px solid var(--neon-green);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                   <span class="label-small" style="color: var(--neon-green)">Nutri-Score</span>
+                   <div style="font-size: 1.2rem; font-weight: 800;">Grade ${(nutrition_grades || 'Unknown').toUpperCase()}</div>
+                </div>
+                <div class="nutri-badge ${nutriClass}" style="width: 45px; height: 45px; font-size: 1.2rem;">${(nutrition_grades || '?').toUpperCase()}</div>
             </div>
-            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
-                ${generic_name || ingredients_text ? (generic_name || ingredients_text).substring(0, 150) + '...' : 'No description available for this product.'}
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            <div class="glass-panel" style="border-top: 2px solid var(--success);">
+                <span class="label-small">Pros</span>
+                <ul style="font-size: 0.85rem; list-style: none; margin-top: 8px;">
+                    ${insights.pros.map(p => `<li style="margin-bottom: 4px; color: var(--success);">✓ ${p}</li>`).join('')}
+                </ul>
+            </div>
+            <div class="glass-panel" style="border-top: 2px solid var(--danger);">
+                <span class="label-small">Cons</span>
+                <ul style="font-size: 0.85rem; list-style: none; margin-top: 8px;">
+                    ${insights.cons.map(c => `<li style="margin-bottom: 4px; color: var(--danger);">× ${c}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+
+        <div class="glass-panel" style="margin-bottom: 20px;">
+            <span class="label-small">Allergy Check</span>
+            <div style="margin-top: 10px;">
+                <p style="font-weight: 600; font-size: 0.95rem;">${analysis.isSafe ? 'No issues found for your profile.' : '⚠️ Alert: ' + analysis.issues.join(', ')}</p>
+                <p class="subtitle" style="margin-top: 5px; font-size: 0.8rem;">Contains: ${analysis.allergensFound.join(', ') || 'None'}</p>
+            </div>
+        </div>
+
+        <div class="glass-panel">
+            <span class="label-small">Description</span>
+            <p style="font-size: 0.85rem; line-height: 1.5; color: var(--text-muted); margin-top: 10px;">
+                ${generic_name || ingredients_text || 'No detailed information available.'}
             </p>
-        </div>
-
-        <div class="analysis-grid">
-            <div class="feature-block pros-block">
-                <div class="feature-header">
-                    <i data-lucide="check" size="14"></i>
-                    <span>Pros</span>
-                </div>
-                <ul class="feature-list">
-                    ${insights.pros.map(p => `<li>${p}</li>`).join('')}
-                </ul>
-            </div>
-            <div class="feature-block cons-block">
-                <div class="feature-header">
-                    <i data-lucide="x" size="14"></i>
-                    <span>Cons</span>
-                </div>
-                <ul class="feature-list">
-                    ${insights.cons.map(c => `<li>${c}</li>`).join('')}
-                </ul>
-            </div>
-        </div>
-
-        <div class="feature-block alert-redesigned">
-            <div class="feature-header">
-                <i data-lucide="alert-triangle" size="16"></i>
-                <span>Allergy Alert</span>
-            </div>
-            <div style="font-size: 0.9rem; margin-top: 5px;">
-                <strong>Contains: ${analysis.allergensFound.length > 0 ? analysis.allergensFound.join(', ') : 'None detected'}</strong>
-                ${!analysis.isSafe ? `<p style="margin-top: 5px; opacity: 0.8; font-size: 0.8rem;">⚠️ Matches your restrictions: ${analysis.issues.join(', ')}</p>` : ''}
-            </div>
-        </div>
-
-        <div class="feature-block plain-block">
-            <div class="feature-header" style="color: #a78bfa;">
-                <i data-lucide="users" size="16"></i>
-                <span>Target Group</span>
-            </div>
-            <div class="target-group-info">
-                <div class="target-item">
-                    <i data-lucide="user-check" size="14"></i>
-                    <span>Best for: ${insights.targetGroup.best}</span>
-                </div>
-                <div class="target-item">
-                    <i data-lucide="user-x" size="14"></i>
-                    <span>Avoid if: ${insights.targetGroup.avoid}</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="glass-panel" style="margin-top: 10px;">
-            <div class="info-grid">
-                <div class="info-item">
-                    <span class="info-label">Nutri-Score</span>
-                    <span class="score-badge ${nutriClass}">${(nutrition_grades || 'Unknown').toUpperCase()}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Eco-Score</span>
-                    <span class="score-badge ${ecoClass}">${(ecoscore_grade || 'Unknown').toUpperCase()}</span>
-                </div>
-            </div>
         </div>
     `;
     lucide.createIcons();
 }
 
 function getProductInsights(product) {
-    const pros = [];
-    const cons = [];
-    const nutriments = product.nutriments || {};
-
-    // Derived Pros
-    if (nutriments.proteins_100g > 10) pros.push("High Protein");
-    if (nutriments.fiber_100g > 5) pros.push("High Fiber");
-    if (product.labels_tags && !product.labels_tags.includes('en:palm-oil')) pros.push("No Palm Oil");
-    if (nutriments.sodium_100g < 0.1) pros.push("Low Sodium");
-    if (pros.length === 0) pros.push("Standard Ingredients");
-
-    // Derived Cons
-    if (nutriments.sugars_100g > 20) cons.push("High Sugar");
-    if (product.additives_n > 5) cons.push("Preservatives");
-    if (product.additives_tags && product.additives_tags.some(t => t.includes('color'))) cons.push("Artificial Color");
-    if (nutriments['saturated-fat_100g'] > 5) cons.push("High Saturated Fat");
-    if (cons.length === 0) cons.push("No Major Concerns");
-
-    // Target Group Logic
-    let best = "General Population";
-    let avoid = "None";
-
-    if (nutriments.proteins_100g > 15) best = "Athletes & Active Adults";
-    if (nutriments.sugars_100g > 25) avoid = "Children & Diabetics";
-    if (product.allergens_tags && product.allergens_tags.length > 3) avoid = "Highly Sensitive Individuals";
-
-    return {
-        pros: pros.slice(0, 3),
-        cons: cons.slice(0, 3),
-        targetGroup: { best, avoid }
-    };
+    const pros = []; const cons = [];
+    const n = product.nutriments || {};
+    if (n.proteins_100g > 10) pros.push("High Protein");
+    if (n.fiber_100g > 5) pros.push("High Fiber");
+    if (n.sugars_100g > 20) cons.push("High Sugar");
+    if (product.additives_n > 5) cons.push("Additives");
+    if (pros.length === 0) pros.push("Natural");
+    if (cons.length === 0) cons.push("Safe Choice");
+    return { pros: pros.slice(0, 3), cons: cons.slice(0, 3) };
 }
 
-function renderAdditives(tags) {
-    if (!tags || tags.length === 0) return '<p class="subtitle">No additives identified.</p>';
-    return tags.map(tag => {
-        const name = tag.replace('en:', '').replace('-', ' ').toUpperCase();
-        return `<span class="score-badge" style="background: rgba(255,255,255,0.1); margin: 0 5px 5px 0;">${name}</span>`;
-    }).join('');
-}
-
-// Logic: Dietary Analysis
 function analyzeDietary(product) {
     const key = authManager.getDataKey('ha_profile');
     const userProfile = JSON.parse(localStorage.getItem(key)) || profile;
-
     const allergens = product.allergens_tags || [];
     const ingredients = (product.ingredients_text || '').toLowerCase();
-
     let issues = [];
     let allergensFound = allergens.map(a => a.replace('en:', '').replace('-', ' ').toUpperCase());
 
-    if (userProfile.vegan && (allergens.includes('en:milk') || allergens.includes('en:eggs') || ingredients.includes('meat') || ingredients.includes('milk'))) {
-        issues.push('Non-Vegan');
-    }
-    if (userProfile.vegetarian && (ingredients.includes('meat') || ingredients.includes('fish'))) {
-        issues.push('Non-Vegetarian');
-    }
-    if (userProfile.gluten_free && (allergens.includes('en:gluten') || ingredients.includes('wheat') || ingredients.includes('barley'))) {
-        issues.push('Gluten');
-    }
-    if (userProfile.nuts && (allergens.includes('en:nuts') || allergens.includes('en:peanuts') || ingredients.includes('nut'))) {
-        issues.push('Nuts');
-    }
-    if (userProfile.dairy && (allergens.includes('en:milk') || ingredients.includes('milk') || ingredients.includes('dairy'))) {
-        issues.push('Dairy');
-    }
+    if (userProfile.vegan && (allergens.includes('en:milk') || ingredients.includes('meat') || ingredients.includes('milk'))) issues.push('Non-Vegan');
+    if (userProfile.gluten_free && (allergens.includes('en:gluten') || ingredients.includes('wheat'))) issues.push('Gluten');
+    if (userProfile.nuts && (allergens.includes('en:nuts') || ingredients.includes('nut'))) issues.push('Nuts');
 
-    return {
-        isSafe: issues.length === 0,
-        issues: issues,
-        allergensFound: allergensFound,
-        message: issues.length === 0 ? 'Matches your preferences.' : issues.join(', ')
-    };
+    return { isSafe: issues.length === 0, issues, allergensFound };
 }
 
-// Persistance: Profile
-function loadProfile() {
-    const key = authManager.getDataKey('ha_profile');
-    const saved = localStorage.getItem(key);
-    if (saved) {
-        profile = JSON.parse(saved);
-        Object.keys(profile).forEach(key => {
-            const check = document.getElementById(`pref-${key}`);
-            if (check) check.checked = profile[key];
-        });
-    } else {
-        // Reset toggles if no profile found (e.g. after logout)
-        Object.keys(profile).forEach(key => {
-            profile[key] = false;
-            const check = document.getElementById(`pref-${key}`);
-            if (check) check.checked = false;
-        });
-    }
-}
-
-function setupEventListeners() {
-    // Auth Forms
-    document.getElementById('login-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const email = e.target.elements[0].value;
-        const pass = e.target.elements[1].value;
-        authManager.login(email, pass);
-    });
-
-    document.getElementById('register-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = e.target.elements[0].value;
-        const email = e.target.elements[1].value;
-        const pass = e.target.elements[2].value;
-        authManager.register(name, email, pass);
-    });
-
-    // Profile Toggles
-    Object.keys(profile).forEach(key => {
-        const check = document.getElementById(`pref-${key}`);
-        if (check) {
-            check.addEventListener('change', (e) => {
-                profile[key] = e.target.checked;
-                const dataKey = authManager.getDataKey('ha_profile');
-                localStorage.setItem(dataKey, JSON.stringify(profile));
-            });
-        }
-    });
-
-    // Manual Search
-    manualSearchBtn.addEventListener('click', () => {
-        const code = barcodeInput.value.trim();
-        if (code) fetchProduct(code);
-    });
-
-    barcodeInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') manualSearchBtn.click();
-    });
-}
-
-// Persistance: History
+// History Handling
 function saveToHistory(product) {
     const key = authManager.getDataKey('ha_history');
     let history = JSON.parse(localStorage.getItem(key) || '[]');
-    // Avoid duplicates
     history = history.filter(p => p.code !== product.code);
     history.unshift({
         code: product.code,
         name: product.product_name,
         brand: product.brands,
         image: product.image_front_url,
-        fullData: product // Save full data for offline viewing
+        score: product.nutrition_grades,
+        fullData: product,
+        time: 'Just now'
     });
-    // Keep last 20
-    history = history.slice(0, 20);
-    localStorage.setItem(key, JSON.stringify(history));
+    localStorage.setItem(key, JSON.stringify(history.slice(0, 20)));
     loadHistory();
 }
 
 function loadHistory() {
     const key = authManager.getDataKey('ha_history');
     const history = JSON.parse(localStorage.getItem(key) || '[]');
-    if (history.length === 0) {
-        historyList.innerHTML = '<p class="subtitle" style="text-align: center; margin-top: 20px;">No recent scans.</p>';
-        return;
-    }
 
-    historyList.innerHTML = history.map(item => `
-        <div class="glass-panel" style="display: flex; align-items: center; gap: 15px; cursor: pointer;" onclick="fetchProduct('${item.code}')">
-            <img src="${item.image || 'https://via.placeholder.com/50'}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px;">
-            <div style="flex: 1;">
-                <div style="font-weight: 600;">${item.name || 'Unknown'}</div>
-                <div class="subtitle">${item.brand || 'No brand'}</div>
+    // Horizontal List
+    recentScansList.innerHTML = history.slice(0, 6).map(item => `
+        <div class="product-card" onclick="fetchProduct('${item.code}')">
+            <div class="card-img-container">
+                <img src="${item.image || 'https://via.placeholder.com/100'}" class="card-img">
+                <div class="nutri-badge nutri-${(item.score || 'e').toLowerCase()}">${(item.score || 'E').toUpperCase()}</div>
             </div>
-            <i data-lucide="chevron-right" style="color: var(--text-muted);"></i>
+            <div class="card-name">${item.name || 'Unknown'}</div>
+            <div class="card-time">${item.time || 'Today'}</div>
         </div>
-    `).join('');
+    `).join('') || '<p class="subtitle">No recent scans</p>';
+
+    // Vertical List
+    fullHistoryList.innerHTML = history.map(item => `
+        <div class="glass-panel" style="display: flex; gap: 15px; cursor: pointer;" onclick="fetchProduct('${item.code}')">
+             <div style="width: 50px; height: 50px; background: white; border-radius: 8px; overflow: hidden;">
+                <img src="${item.image || 'https://via.placeholder.com/50'}" style="width:100%; height:100%; object-fit: contain;">
+             </div>
+             <div style="flex:1;">
+                <div style="font-weight: 600;">${item.name || 'Unknown'}</div>
+                <div class="subtitle">${item.brand || 'No Brand'}</div>
+             </div>
+             <div class="nutri-badge nutri-${(item.score || 'e').toLowerCase()}" style="width: 24px; height: 24px;">${(item.score || 'E').toUpperCase()}</div>
+        </div>
+    `).join('') || '<p class="subtitle" style="text-align: center;">History empty.</p>';
+
     lucide.createIcons();
+}
+
+function loadProfile() {
+    const key = authManager.getDataKey('ha_profile');
+    const saved = localStorage.getItem(key);
+    if (saved) {
+        profile = JSON.parse(saved);
+        Object.keys(profile).forEach(k => {
+            const check = document.getElementById(`pref-${k}`);
+            if (check) check.checked = profile[k];
+        });
+    }
+    lucide.createIcons();
+}
+
+function setupEventListeners() {
+    // Mode Toggle
+    const modeToggle = document.getElementById('mode-toggle');
+    const toggleItems = modeToggle.querySelectorAll('.toggle-item');
+    toggleItems.forEach(item => {
+        item.addEventListener('click', () => {
+            toggleItems.forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            modeToggle.classList.toggle('text-mode', item.getAttribute('data-mode') === 'text');
+        });
+    });
+
+    // Forms
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        authManager.login(e.target.elements[0].value, e.target.elements[1].value);
+    });
+
+    document.getElementById('register-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        authManager.register(e.target.elements[0].value, e.target.elements[1].value, e.target.elements[2].value);
+    });
+
+    // Profile Toggles
+    ['vegan', 'gluten_free', 'nuts'].forEach(k => {
+        const el = document.getElementById(`pref-${k}`);
+        if (el) {
+            el.addEventListener('change', (e) => {
+                profile[k] = e.target.checked;
+                const key = authManager.getDataKey('ha_profile');
+                localStorage.setItem(key, JSON.stringify(profile));
+                loadProfile();
+            });
+        }
+    });
+
+    manualSearchBtn.addEventListener('click', () => {
+        const code = barcodeInput.value.trim();
+        if (code) fetchProduct(code);
+    });
 }

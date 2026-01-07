@@ -3,8 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Health Aware Plus - Smart Ingredient Scanner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Health Aware+ - Smart Ingredient Scanner</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -31,6 +31,7 @@
                         Sign in with Google
                     </button>
                     <p class="auth-switch" onclick="toggleAuthView('register')">Don't have an account? Register</p>
+                    <button type="button" class="cancel-link" onclick="closeAuthModal()">Cancel</button>
                 </form>
             </div>
             <div id="register-view" class="auth-view" style="display: none;">
@@ -51,142 +52,178 @@
                         Sign up with Google
                     </button>
                     <p class="auth-switch" onclick="toggleAuthView('login')">Already have an account? Login</p>
+                    <button type="button" class="cancel-link" onclick="closeAuthModal()">Cancel</button>
                 </form>
             </div>
-            <button class="cancel-bar" onclick="closeAuthModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Product Details Fullscreen Page -->
+    <div id="product-details-page" class="details-page">
+        <div class="details-header">
+            <button onclick="closeProductDetails()" style="background:none; border:none; color:white;">
+                <i data-lucide="chevron-left"></i>
+            </button>
+            <h3 id="details-title">Product Details</h3>
+            <button style="background:none; border:none; color:white;"><i data-lucide="share-2"></i></button>
+        </div>
+        <div id="product-details-content" style="padding: 20px;">
+            <!-- Content injected via app.js -->
         </div>
     </div>
 
     <div class="app-container">
         <header>
-            <div class="logo">Health Aware+</div>
-            <div class="subtitle">Smart Ingredient Scanner</div>
+            <div class="logo-container">
+                <div class="logo-icon"><i data-lucide="leaf"></i></div>
+                <div class="logo-text">Health Aware+</div>
+            </div>
+            <div onclick="showSection('profile-section')" style="cursor: pointer; color: white;">
+                <i data-lucide="user-circle" size="28"></i>
+            </div>
         </header>
 
-        <!-- Scanner Section -->
-        <main id="scanner-section" class="section active">
-            <div class="glass-panel">
+        <!-- Main Home/Scan View -->
+        <main id="scan-section" class="section active">
+            <!-- barcode / Text Toggle -->
+            <div class="toggle-container" id="mode-toggle">
+                <div class="mode-slider"></div>
+                <div class="toggle-item active" data-mode="barcode">Barcode</div>
+                <div class="toggle-item" data-mode="text">Text (OCR)</div>
+            </div>
+
+            <div class="scanner-card glass-panel">
                 <div id="scanner-container">
-                    <div class="scanner-overlay"></div>
-                    <div class="scanner-line"></div>
+                    <div class="live-badge">
+                        <div class="live-dot"></div>
+                        <span>LIVE</span>
+                    </div>
+                    <div class="scanner-frame">
+                        <div class="corner tl"></div>
+                        <div class="corner tr"></div>
+                        <div class="corner bl"></div>
+                        <div class="corner br"></div>
+                        <div class="scan-bar"></div>
+                    </div>
                 </div>
-                <div style="margin-top: 15px; text-align: center;">
-                    <button id="start-scanner-btn" class="glass-panel"
-                        style="width: 100%; border-radius: 12px; padding: 12px; background: var(--primary); color: white; border: none; font-weight: 600;">
-                        Start Scanning
-                    </button>
-                    <p class="subtitle" style="margin-top: 10px;">Point your camera at a barcode</p>
+                <div class="scanner-controls">
+                    <div class="control-btn"><i data-lucide="image"></i></div>
+                    <div class="scan-main-btn" id="trigger-scan"><i data-lucide="scan" color="#000"></i></div>
+                    <div class="control-btn"><i data-lucide="zap"></i></div>
                 </div>
             </div>
 
-            <!-- Manual Entry -->
-            <div class="glass-panel">
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="barcode-input" placeholder="Enter barcode manually..."
-                        style="flex: 1; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 12px; border-radius: 10px; color: white;">
-                    <button id="manual-search-btn"
-                        style="background: var(--primary); border: none; padding: 0 15px; border-radius: 10px; color: white;">
-                        <i data-lucide="search"></i>
-                    </button>
-                </div>
-            </div>
-        </main>
+            <p
+                style="text-align: center; color: var(--neon-green); font-size: 0.85rem; margin-bottom: 30px; opacity: 0.8;">
+                Align barcode within frame to scan
+            </p>
 
-        <!-- Product Details Section -->
-        <main id="product-section" class="section">
-            <div id="product-content">
-                <!-- Content injected via app.js -->
+            <!-- Recent Scans -->
+            <div class="section-header">
+                <h3>Recent Scans</h3>
+                <a href="#" class="view-all" onclick="showSection('history-section')">View All</a>
             </div>
-            <button class="glass-panel back-btn" style="width: 100%; text-align: center; color: var(--text-muted);">
-                Scan Another Product
-            </button>
+            <div class="horizontal-scroll" id="recent-scans-list">
+                <!-- Items injected via app.js -->
+            </div>
         </main>
 
         <!-- History Section -->
         <main id="history-section" class="section">
-            <h2 style="margin-bottom: 20px;">Recent Scans</h2>
-            <div id="history-list">
-                <!-- History items injected via app.js -->
+            <div style="padding: 20px;">
+                <h2 style="margin-bottom: 20px;">History</h2>
+                <div id="full-history-list" style="display: flex; flex-direction: column; gap: 15px;">
+                    <!-- History items -->
+                </div>
             </div>
         </main>
 
-        <!-- Profile Section -->
+        <!-- Profile / Settings Section -->
         <main id="profile-section" class="section">
-            <div class="glass-panel" id="guest-profile">
-                <div style="text-align: center; padding: 20px 0;">
-                    <i data-lucide="user-circle" size="48" style="margin-bottom: 15px; color: var(--primary);"></i>
-                    <h2 style="margin-bottom: 10px;">Guest User</h2>
-                    <p class="subtitle" style="margin-bottom: 20px;">Sign in to sync your data across devices and save
-                        your history permanently.</p>
-                    <button class="auth-btn" style="width: 100%;" onclick="openAuthModal()">Login / Register</button>
-                </div>
-            </div>
-
-            <div class="glass-panel hidden" id="user-profile">
-                <div class="user-profile-header">
-                    <div class="user-avatar" id="avatar-circle">M</div>
-                    <div class="user-info-text">
-                        <div class="user-name" id="display-name">User Name</div>
-                        <div class="user-status">Premium Member</div>
-                        <button class="logout-btn" onclick="authManager.logout()">Logout</button>
+            <div style="padding: 20px;">
+                <div class="glass-panel" id="guest-profile">
+                    <div style="text-align: center; padding: 20px 0;">
+                        <i data-lucide="user-circle" size="48"
+                            style="margin-bottom: 15px; color: var(--neon-green);"></i>
+                        <h2 style="margin-bottom: 10px;">Guest User</h2>
+                        <p class="subtitle" style="margin-bottom: 20px;">Sign in to sync your data.</p>
+                        <button class="auth-btn" style="width: 100%;" onclick="openAuthModal()">Login /
+                            Register</button>
                     </div>
                 </div>
-            </div>
 
-            <div class="glass-panel">
-                <h2 style="margin-bottom: 20px;">Personal Profile</h2>
-                <div id="allergen-toggles">
-                    <div class="profile-item">
-                        <span>Vegan</span>
-                        <label class="switch">
-                            <input type="checkbox" id="pref-vegan">
-                            <span class="slider"></span>
-                        </label>
+                <div class="glass-panel hidden" id="user-profile">
+                    <div class="user-profile-header">
+                        <div class="user-avatar" id="avatar-circle">M</div>
+                        <div class="user-info-text">
+                            <div class="user-name" id="display-name">User Name</div>
+                            <div class="user-status">Premium Member</div>
+                            <button class="logout-btn" onclick="authManager.logout()">Logout</button>
+                        </div>
                     </div>
-                    <div class="profile-item">
-                        <span>Vegetarian</span>
-                        <label class="switch">
-                            <input type="checkbox" id="pref-vegetarian">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="profile-item">
-                        <span>Gluten-Free</span>
-                        <label class="switch">
-                            <input type="checkbox" id="pref-gluten_free">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="profile-item">
-                        <span>Nut Allergy</span>
-                        <label class="switch">
-                            <input type="checkbox" id="pref-nuts">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="profile-item">
-                        <span>Dairy-Free</span>
-                        <label class="switch">
-                            <input type="checkbox" id="pref-dairy">
-                            <span class="slider"></span>
-                        </label>
+                </div>
+
+                <div class="glass-panel" style="margin-top: 20px;">
+                    <h2 style="margin-bottom: 20px;">Preferences</h2>
+                    <div id="allergen-toggles" class="preference-list">
+                        <div class="preference-item">
+                            <span>Vegan</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="pref-vegan">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="preference-item">
+                            <span>Gluten-Free</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="pref-gluten_free">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="preference-item">
+                            <span>Nut Allergy</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="pref-nuts">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>
         </main>
 
-        <nav class="nav-bar">
-            <div class="nav-item active" data-target="scanner-section">
+        <!-- Search Section -->
+        <main id="search-section" class="section">
+            <div style="padding: 20px;">
+                <div class="glass-panel">
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="barcode-input" placeholder="Search product..."
+                            style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding: 12px; border-radius: 10px; color: white;">
+                        <button id="manual-search-btn"
+                            style="background: var(--neon-green); border: none; padding: 0 15px; border-radius: 10px; color: #000;">
+                            <i data-lucide="search"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <nav class="bottom-nav">
+            <div class="nav-tab active" data-target="scan-section">
                 <i data-lucide="scan"></i>
                 <span>Scan</span>
             </div>
-            <div class="nav-item" data-target="history-section">
+            <div class="nav-tab" data-target="search-section">
+                <i data-lucide="search"></i>
+                <span>Search</span>
+            </div>
+            <div class="nav-tab" data-target="history-section">
                 <i data-lucide="history"></i>
                 <span>History</span>
             </div>
-            <div class="nav-item" data-target="profile-section">
-                <i data-lucide="user"></i>
-                <span>Profile</span>
+            <div class="nav-tab" data-target="profile-section">
+                <i data-lucide="settings"></i>
+                <span>Settings</span>
             </div>
         </nav>
     </div>
