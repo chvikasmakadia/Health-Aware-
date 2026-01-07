@@ -1,7 +1,72 @@
-// Smart Ingredient Scanner Core Logic
-
 const API_BASE = 'https://world.openfoodfacts.org/api/v2/product/';
 let scanner = null;
+
+// Auth Helper Functions
+window.openAuthModal = () => document.getElementById('auth-modal').classList.add('active');
+window.closeAuthModal = () => document.getElementById('auth-modal').classList.remove('active');
+window.toggleAuthView = (view) => {
+    document.getElementById('login-view').style.display = view === 'login' ? 'block' : 'none';
+    document.getElementById('register-view').style.display = view === 'register' ? 'block' : 'none';
+};
+
+// Auth Manager
+class AuthManager {
+    constructor() {
+        this.user = JSON.parse(localStorage.getItem('ha_user')) || null;
+        this.updateUI();
+    }
+
+    login(email, password) {
+        // Mock authentication
+        this.user = { id: Date.now(), email, name: email.split('@')[0], status: 'Premium' };
+        localStorage.setItem('ha_user', JSON.stringify(this.user));
+        this.updateUI();
+        window.closeAuthModal();
+        loadProfile();
+        loadHistory();
+    }
+
+    register(name, email, password) {
+        // Mock registration
+        this.user = { id: Date.now(), email, name, status: 'Premium' };
+        localStorage.setItem('ha_user', JSON.stringify(this.user));
+        this.updateUI();
+        window.closeAuthModal();
+        loadProfile();
+        loadHistory();
+    }
+
+    logout() {
+        this.user = null;
+        localStorage.removeItem('ha_user');
+        this.updateUI();
+        loadProfile();
+        loadHistory();
+        showSection('scanner-section');
+    }
+
+    updateUI() {
+        const guestView = document.getElementById('guest-profile');
+        const userView = document.getElementById('user-profile');
+
+        if (this.user) {
+            guestView.classList.add('hidden');
+            userView.classList.remove('hidden');
+            document.getElementById('display-name').innerText = this.user.name;
+            document.getElementById('avatar-circle').innerText = this.user.name[0].toUpperCase();
+        } else {
+            guestView.classList.remove('hidden');
+            userView.classList.add('hidden');
+        }
+    }
+
+    getDataKey(baseKey) {
+        return this.user ? `${baseKey}_${this.user.id}` : baseKey;
+    }
+}
+
+const authManager = new AuthManager();
+window.authManager = authManager;
 
 // DOM Elements
 const sections = document.querySelectorAll('.section');
@@ -281,25 +346,28 @@ function renderAdditives(tags) {
 
 // Logic: Dietary Analysis
 function analyzeDietary(product) {
+    const key = authManager.getDataKey('ha_profile');
+    const userProfile = JSON.parse(localStorage.getItem(key)) || profile;
+
     const allergens = product.allergens_tags || [];
     const ingredients = (product.ingredients_text || '').toLowerCase();
 
     let issues = [];
     let allergensFound = allergens.map(a => a.replace('en:', '').replace('-', ' ').toUpperCase());
 
-    if (profile.vegan && (allergens.includes('en:milk') || allergens.includes('en:eggs') || ingredients.includes('meat') || ingredients.includes('milk'))) {
+    if (userProfile.vegan && (allergens.includes('en:milk') || allergens.includes('en:eggs') || ingredients.includes('meat') || ingredients.includes('milk'))) {
         issues.push('Non-Vegan');
     }
-    if (profile.vegetarian && (ingredients.includes('meat') || ingredients.includes('fish'))) {
+    if (userProfile.vegetarian && (ingredients.includes('meat') || ingredients.includes('fish'))) {
         issues.push('Non-Vegetarian');
     }
-    if (profile.gluten_free && (allergens.includes('en:gluten') || ingredients.includes('wheat') || ingredients.includes('barley'))) {
+    if (userProfile.gluten_free && (allergens.includes('en:gluten') || ingredients.includes('wheat') || ingredients.includes('barley'))) {
         issues.push('Gluten');
     }
-    if (profile.nuts && (allergens.includes('en:nuts') || allergens.includes('en:peanuts') || ingredients.includes('nut'))) {
+    if (userProfile.nuts && (allergens.includes('en:nuts') || allergens.includes('en:peanuts') || ingredients.includes('nut'))) {
         issues.push('Nuts');
     }
-    if (profile.dairy && (allergens.includes('en:milk') || ingredients.includes('milk') || ingredients.includes('dairy'))) {
+    if (userProfile.dairy && (allergens.includes('en:milk') || ingredients.includes('milk') || ingredients.includes('dairy'))) {
         issues.push('Dairy');
     }
 
@@ -313,24 +381,49 @@ function analyzeDietary(product) {
 
 // Persistance: Profile
 function loadProfile() {
-    const saved = localStorage.getItem('ha_profile');
+    const key = authManager.getDataKey('ha_profile');
+    const saved = localStorage.getItem(key);
     if (saved) {
         profile = JSON.parse(saved);
         Object.keys(profile).forEach(key => {
             const check = document.getElementById(`pref-${key}`);
             if (check) check.checked = profile[key];
         });
+    } else {
+        // Reset toggles if no profile found (e.g. after logout)
+        Object.keys(profile).forEach(key => {
+            profile[key] = false;
+            const check = document.getElementById(`pref-${key}`);
+            if (check) check.checked = false;
+        });
     }
 }
 
 function setupEventListeners() {
+    // Auth Forms
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const email = e.target.elements[0].value;
+        const pass = e.target.elements[1].value;
+        authManager.login(email, pass);
+    });
+
+    document.getElementById('register-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = e.target.elements[0].value;
+        const email = e.target.elements[1].value;
+        const pass = e.target.elements[2].value;
+        authManager.register(name, email, pass);
+    });
+
     // Profile Toggles
     Object.keys(profile).forEach(key => {
         const check = document.getElementById(`pref-${key}`);
         if (check) {
             check.addEventListener('change', (e) => {
                 profile[key] = e.target.checked;
-                localStorage.setItem('ha_profile', JSON.stringify(profile));
+                const dataKey = authManager.getDataKey('ha_profile');
+                localStorage.setItem(dataKey, JSON.stringify(profile));
             });
         }
     });
@@ -348,7 +441,8 @@ function setupEventListeners() {
 
 // Persistance: History
 function saveToHistory(product) {
-    let history = JSON.parse(localStorage.getItem('ha_history') || '[]');
+    const key = authManager.getDataKey('ha_history');
+    let history = JSON.parse(localStorage.getItem(key) || '[]');
     // Avoid duplicates
     history = history.filter(p => p.code !== product.code);
     history.unshift({
@@ -360,12 +454,13 @@ function saveToHistory(product) {
     });
     // Keep last 20
     history = history.slice(0, 20);
-    localStorage.setItem('ha_history', JSON.stringify(history));
+    localStorage.setItem(key, JSON.stringify(history));
     loadHistory();
 }
 
 function loadHistory() {
-    const history = JSON.parse(localStorage.getItem('ha_history') || '[]');
+    const key = authManager.getDataKey('ha_history');
+    const history = JSON.parse(localStorage.getItem(key) || '[]');
     if (history.length === 0) {
         historyList.innerHTML = '<p class="subtitle" style="text-align: center; margin-top: 20px;">No recent scans.</p>';
         return;

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,7 +9,35 @@
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 </head>
+
 <body>
+    <!-- Authentication Modals -->
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal-content glass-panel">
+            <div id="login-view" class="auth-view">
+                <h2 style="margin-bottom: 20px;">Welcome Back</h2>
+                <form id="login-form" class="auth-form">
+                    <input type="email" class="auth-input" placeholder="Email Address" required>
+                    <input type="password" class="auth-input" placeholder="Password" required>
+                    <button type="submit" class="auth-btn">Sign In</button>
+                    <p class="auth-switch" onclick="toggleAuthView('register')">Don't have an account? Register</p>
+                </form>
+            </div>
+            <div id="register-view" class="auth-view" style="display: none;">
+                <h2 style="margin-bottom: 20px;">Create Account</h2>
+                <form id="register-form" class="auth-form">
+                    <input type="text" class="auth-input" placeholder="Full Name" required>
+                    <input type="email" class="auth-input" placeholder="Email Address" required>
+                    <input type="password" class="auth-input" placeholder="Password" required>
+                    <button type="submit" class="auth-btn">Register</button>
+                    <p class="auth-switch" onclick="toggleAuthView('login')">Already have an account? Login</p>
+                </form>
+            </div>
+            <button class="auth-switch" onclick="closeAuthModal()"
+                style="width: 100%; margin-top: 20px; color: var(--text-muted);">Cancel</button>
+        </div>
+    </div>
+
     <div class="app-container">
         <header>
             <div class="logo">Health Aware+</div>
@@ -23,7 +52,8 @@
                     <div class="scanner-line"></div>
                 </div>
                 <div style="margin-top: 15px; text-align: center;">
-                    <button id="start-scanner-btn" class="glass-panel" style="width: 100%; border-radius: 12px; padding: 12px; background: var(--primary); color: white; border: none; font-weight: 600;">
+                    <button id="start-scanner-btn" class="glass-panel"
+                        style="width: 100%; border-radius: 12px; padding: 12px; background: var(--primary); color: white; border: none; font-weight: 600;">
                         Start Scanning
                     </button>
                     <p class="subtitle" style="margin-top: 10px;">Point your camera at a barcode</p>
@@ -33,8 +63,10 @@
             <!-- Manual Entry -->
             <div class="glass-panel">
                 <div style="display: flex; gap: 10px;">
-                    <input type="text" id="barcode-input" placeholder="Enter barcode manually..." style="flex: 1; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 12px; border-radius: 10px; color: white;">
-                    <button id="manual-search-btn" style="background: var(--primary); border: none; padding: 0 15px; border-radius: 10px; color: white;">
+                    <input type="text" id="barcode-input" placeholder="Enter barcode manually..."
+                        style="flex: 1; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 12px; border-radius: 10px; color: white;">
+                    <button id="manual-search-btn"
+                        style="background: var(--primary); border: none; padding: 0 15px; border-radius: 10px; color: white;">
                         <i data-lucide="search"></i>
                     </button>
                 </div>
@@ -61,6 +93,27 @@
 
         <!-- Profile Section -->
         <main id="profile-section" class="section">
+            <div class="glass-panel" id="guest-profile">
+                <div style="text-align: center; padding: 20px 0;">
+                    <i data-lucide="user-circle" size="48" style="margin-bottom: 15px; color: var(--primary);"></i>
+                    <h2 style="margin-bottom: 10px;">Guest User</h2>
+                    <p class="subtitle" style="margin-bottom: 20px;">Sign in to sync your data across devices and save
+                        your history permanently.</p>
+                    <button class="auth-btn" style="width: 100%;" onclick="openAuthModal()">Login / Register</button>
+                </div>
+            </div>
+
+            <div class="glass-panel hidden" id="user-profile">
+                <div class="user-profile-header">
+                    <div class="user-avatar" id="avatar-circle">M</div>
+                    <div class="user-info-text">
+                        <div class="user-name" id="display-name">User Name</div>
+                        <div class="user-status">Premium Member</div>
+                        <button class="logout-btn" onclick="authManager.logout()">Logout</button>
+                    </div>
+                </div>
+            </div>
+
             <div class="glass-panel">
                 <h2 style="margin-bottom: 20px;">Personal Profile</h2>
                 <div id="allergen-toggles">
@@ -124,4 +177,5 @@
         lucide.createIcons();
     </script>
 </body>
+
 </html>
