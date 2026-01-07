@@ -346,6 +346,83 @@ header {
     object-fit: contain;
 }
 
+/* Product Scan Details Redesign */
+.detail-box {
+    background: var(--glass-bg);
+    border: 1px solid rgba(0, 255, 106, 0.2);
+    /* Light green border */
+    border-radius: 20px;
+    padding: 20px;
+    margin-bottom: 15px;
+    backdrop-filter: blur(10px);
+}
+
+.box-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.box-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--neon-green);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.box-content {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: var(--text-main);
+}
+
+.pros-cons-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.detail-box.pro {
+    background: rgba(0, 255, 106, 0.05);
+    border-color: rgba(0, 255, 106, 0.2);
+}
+
+.detail-box.con {
+    background: rgba(255, 68, 68, 0.05);
+    border-color: rgba(255, 68, 68, 0.2);
+}
+
+.detail-box.alert {
+    background: rgba(254, 203, 2, 0.05);
+    border-color: rgba(254, 203, 2, 0.2);
+}
+
+.box-title.danger {
+    color: #ff6666;
+}
+
+.box-title.warning {
+    color: var(--warning);
+}
+
+.detail-img-container {
+    background: white;
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: center;
+}
+
+.detail-img {
+    max-width: 120px;
+    max-height: 120px;
+    object-fit: contain;
+}
+
 .nutri-badge {
     position: absolute;
     top: 8px;
@@ -466,13 +543,23 @@ header {
 .details-page {
     position: fixed;
     top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 500px;
+    /* Constrain to mobile width */
+    height: 100%;
     background: var(--bg-dark);
-    z-index: 200;
+    z-index: 2000;
+    /* Ensure it stays above everything */
     overflow-y: auto;
     display: none;
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+}
+
+#product-details-content {
+    padding-bottom: 120px !important;
+    /* Space for bottom nav */
 }
 
 .details-page.active {

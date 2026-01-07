@@ -226,60 +226,82 @@ function renderProduct(product) {
         brands,
         image_front_url,
         nutrition_grades,
-        ecoscore_grade,
         ingredients_text,
-        generic_name
+        generic_name,
+        quantity
     } = product;
 
-    const nutriClass = `nutri-${(nutrition_grades || 'e').toLowerCase()}`;
     const analysis = analyzeDietary(product);
     const insights = getProductInsights(product);
 
     productDetailsContent.innerHTML = `
-        <div class="glass-panel" style="text-align: center; margin-bottom: 20px; padding: 20px;">
-            <img src="${image_front_url || 'https://via.placeholder.com/150'}" style="width: 150px; height: 150px; object-fit: contain; margin-bottom: 15px;">
-            <h1 style="font-size: 1.5rem; margin-bottom: 5px;">${product_name || 'Unknown'}</h1>
-            <p class="subtitle">${brands || 'No Brand'}</p>
+        <div class="detail-box">
+            <div class="box-header">
+                <i data-lucide="package" size="18" style="color:var(--neon-green)"></i>
+                <span class="box-title">Product Scanned</span>
+            </div>
+            <div class="detail-img-container">
+                <img src="${image_front_url || 'https://via.placeholder.com/150'}" class="detail-img">
+            </div>
+            <div style="text-align: center;">
+                <h2 style="font-size: 1.4rem; margin-bottom: 5px;">${product_name || 'Unknown Product'}</h2>
+                <p class="subtitle">${brands || 'Brand Unknown'} ${quantity ? '• ' + quantity : ''}</p>
+            </div>
         </div>
 
-        <div class="glass-panel" style="margin-bottom: 20px; border-left: 4px solid var(--neon-green);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                   <span class="label-small" style="color: var(--neon-green)">Nutri-Score</span>
-                   <div style="font-size: 1.2rem; font-weight: 800;">Grade ${(nutrition_grades || 'Unknown').toUpperCase()}</div>
+        <div class="detail-box">
+            <div class="box-header">
+                <i data-lucide="file-text" size="18" style="color:var(--neon-green)"></i>
+                <span class="box-title">Description</span>
+            </div>
+            <div class="box-content">
+                ${generic_name || ingredients_text || 'No detailed description available for this product.'}
+            </div>
+        </div>
+
+        <div class="pros-cons-grid">
+            <div class="detail-box pro">
+                <div class="box-header">
+                    <i data-lucide="check-circle" size="18" style="color:var(--success)"></i>
+                    <span class="box-title">Pros</span>
                 </div>
-                <div class="nutri-badge ${nutriClass}" style="width: 45px; height: 45px; font-size: 1.2rem;">${(nutrition_grades || '?').toUpperCase()}</div>
+                <div class="box-content" style="font-size: 0.85rem; color: var(--success);">
+                    ${insights.pros.map(p => `<div>• ${p}</div>`).join('')}
+                </div>
+            </div>
+            <div class="detail-box con">
+                <div class="box-header">
+                    <i data-lucide="x-circle" size="18" style="color:#ff6666"></i>
+                    <span class="box-title danger">Cons</span>
+                </div>
+                <div class="box-content" style="font-size: 0.85rem; color: #ff6666;">
+                    ${insights.cons.map(c => `<div>• ${c}</div>`).join('')}
+                </div>
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-            <div class="glass-panel" style="border-top: 2px solid var(--success);">
-                <span class="label-small">Pros</span>
-                <ul style="font-size: 0.85rem; list-style: none; margin-top: 8px;">
-                    ${insights.pros.map(p => `<li style="margin-bottom: 4px; color: var(--success);">✓ ${p}</li>`).join('')}
-                </ul>
+        <div class="detail-box ${analysis.isSafe ? '' : 'alert'}">
+            <div class="box-header">
+                <i data-lucide="${analysis.isSafe ? 'shield-check' : 'alert-triangle'}" size="18" style="color:${analysis.isSafe ? 'var(--neon-green)' : 'var(--warning)'}"></i>
+                <span class="box-title ${analysis.isSafe ? '' : 'warning'}">Allergy Alert</span>
             </div>
-            <div class="glass-panel" style="border-top: 2px solid var(--danger);">
-                <span class="label-small">Cons</span>
-                <ul style="font-size: 0.85rem; list-style: none; margin-top: 8px;">
-                    ${insights.cons.map(c => `<li style="margin-bottom: 4px; color: var(--danger);">× ${c}</li>`).join('')}
-                </ul>
+            <div class="box-content">
+                <p style="font-weight: 600;">${analysis.isSafe ? 'Safe for your profile.' : '⚠️ ' + analysis.issues.join(', ')}</p>
+                <p class="subtitle" style="margin-top: 5px; font-size: 0.8rem;">
+                    Contains: ${analysis.allergensFound.length > 0 ? analysis.allergensFound.join(', ') : 'No common allergens detected.'}
+                </p>
             </div>
         </div>
 
-        <div class="glass-panel" style="margin-bottom: 20px;">
-            <span class="label-small">Allergy Check</span>
-            <div style="margin-top: 10px;">
-                <p style="font-weight: 600; font-size: 0.95rem;">${analysis.isSafe ? 'No issues found for your profile.' : '⚠️ Alert: ' + analysis.issues.join(', ')}</p>
-                <p class="subtitle" style="margin-top: 5px; font-size: 0.8rem;">Contains: ${analysis.allergensFound.join(', ') || 'None'}</p>
+        <div class="detail-box">
+            <div class="box-header">
+                <i data-lucide="users" size="18" style="color:var(--neon-green)"></i>
+                <span class="box-title">Target Group</span>
             </div>
-        </div>
-
-        <div class="glass-panel">
-            <span class="label-small">Description</span>
-            <p style="font-size: 0.85rem; line-height: 1.5; color: var(--text-muted); margin-top: 10px;">
-                ${generic_name || ingredients_text || 'No detailed information available.'}
-            </p>
+            <div class="box-content">
+                <p style="font-weight: 500;">Best for: Adults & Health-conscious users</p>
+                <p class="subtitle" style="font-size: 0.8rem;">Avoid if: You have specific allergies mentioned above.</p>
+            </div>
         </div>
     `;
     lucide.createIcons();
