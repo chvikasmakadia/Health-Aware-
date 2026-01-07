@@ -310,6 +310,103 @@ input:checked+.slider:before {
     transform: translateX(20px);
 }
 
+/* Feature Blocks */
+.feature-block {
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.feature-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pros-block {
+    background: hsla(142, 70%, 45%, 0.1);
+    border: 1px solid hsla(142, 70%, 45%, 0.2);
+    color: var(--success);
+}
+
+.cons-block {
+    background: hsla(20, 92%, 50%, 0.1);
+    border: 1px solid hsla(20, 92%, 50%, 0.2);
+    color: #ff8c42;
+    /* Soft orange/red */
+}
+
+.feature-list {
+    list-style: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.feature-list li {
+    margin-bottom: 4px;
+}
+
+.analysis-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+/* Allergy Alert Redesign */
+.alert-redesigned {
+    background: hsla(0, 84%, 60%, 0.08);
+    border: 1px solid hsla(0, 84%, 60%, 0.2);
+    color: var(--danger);
+}
+
+.alert-redesigned strong {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+/* Target Group & Description */
+.plain-block {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--glass-border);
+}
+
+.target-group-info {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.target-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+/* Section overrides */
+.product-hero {
+    background: hsla(180, 50%, 50%, 0.05);
+    padding: 20px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+}
+
+.label-small {
+    font-size: 0.65rem;
+    color: var(--primary);
+    text-transform: uppercase;
+    font-weight: 800;
+    margin-bottom: 4px;
+    display: block;
+}
+
 /* Hidden sections */
 .section {
     display: none;

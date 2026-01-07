@@ -145,20 +145,83 @@ function renderProduct(product) {
         ecoscore_grade,
         ingredients_text,
         additives_tags,
-        allergens_tags
+        nutriscore_data,
+        generic_name
     } = product;
 
     const nutriClass = `score-${(nutrition_grades || 'e').toLowerCase()}`;
     const ecoClass = `score-${(ecoscore_grade || 'e').toLowerCase()}`;
 
     const analysis = analyzeDietary(product);
+    const insights = getProductInsights(product);
 
     productContent.innerHTML = `
-        <div class="glass-panel">
-            <img src="${image_front_url || 'https://via.placeholder.com/200'}" style="width: 100%; height: 150px; object-fit: contain; border-radius: 10px; margin-bottom: 15px;">
-            <h1 class="product-name">${product_name || 'Unknown Product'}</h1>
-            <p class="subtitle" style="margin-bottom: 20px;">${brands || 'No Brand'}</p>
+        <div class="product-hero glass-panel">
+            <span class="label-small">Product Scanned</span>
+            <h1 class="product-name" style="margin-bottom: 5px;">${product_name || 'Unknown Product'}</h1>
+            <p class="subtitle">${brands || 'No Brand'}</p>
+        </div>
 
+        <div class="feature-block plain-block">
+            <div class="feature-header">
+                <i data-lucide="file-text" size="16"></i>
+                <span>Description</span>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4;">
+                ${generic_name || ingredients_text ? (generic_name || ingredients_text).substring(0, 150) + '...' : 'No description available for this product.'}
+            </p>
+        </div>
+
+        <div class="analysis-grid">
+            <div class="feature-block pros-block">
+                <div class="feature-header">
+                    <i data-lucide="check" size="14"></i>
+                    <span>Pros</span>
+                </div>
+                <ul class="feature-list">
+                    ${insights.pros.map(p => `<li>${p}</li>`).join('')}
+                </ul>
+            </div>
+            <div class="feature-block cons-block">
+                <div class="feature-header">
+                    <i data-lucide="x" size="14"></i>
+                    <span>Cons</span>
+                </div>
+                <ul class="feature-list">
+                    ${insights.cons.map(c => `<li>${c}</li>`).join('')}
+                </ul>
+            </div>
+        </div>
+
+        <div class="feature-block alert-redesigned">
+            <div class="feature-header">
+                <i data-lucide="alert-triangle" size="16"></i>
+                <span>Allergy Alert</span>
+            </div>
+            <div style="font-size: 0.9rem; margin-top: 5px;">
+                <strong>Contains: ${analysis.allergensFound.length > 0 ? analysis.allergensFound.join(', ') : 'None detected'}</strong>
+                ${!analysis.isSafe ? `<p style="margin-top: 5px; opacity: 0.8; font-size: 0.8rem;">⚠️ Matches your restrictions: ${analysis.issues.join(', ')}</p>` : ''}
+            </div>
+        </div>
+
+        <div class="feature-block plain-block">
+            <div class="feature-header" style="color: #a78bfa;">
+                <i data-lucide="users" size="16"></i>
+                <span>Target Group</span>
+            </div>
+            <div class="target-group-info">
+                <div class="target-item">
+                    <i data-lucide="user-check" size="14"></i>
+                    <span>Best for: ${insights.targetGroup.best}</span>
+                </div>
+                <div class="target-item">
+                    <i data-lucide="user-x" size="14"></i>
+                    <span>Avoid if: ${insights.targetGroup.avoid}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-panel" style="margin-top: 10px;">
             <div class="info-grid">
                 <div class="info-item">
                     <span class="info-label">Nutri-Score</span>
@@ -169,31 +232,43 @@ function renderProduct(product) {
                     <span class="score-badge ${ecoClass}">${(ecoscore_grade || 'Unknown').toUpperCase()}</span>
                 </div>
             </div>
-
-            <div class="alert-box ${analysis.isSafe ? 'alert-success' : 'alert-danger'}">
-                <i data-lucide="${analysis.isSafe ? 'check-circle' : 'alert-triangle'}"></i>
-                <div>
-                    <strong style="display: block;">${analysis.isSafe ? 'Safe for you!' : 'Allergen Warning'}</strong>
-                    <span style="font-size: 0.85rem;">${analysis.message}</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="glass-panel">
-            <h3 style="margin-bottom: 15px;">Additives Analysis</h3>
-            <div id="additives-list">
-                ${renderAdditives(additives_tags)}
-            </div>
-        </div>
-
-        <div class="glass-panel">
-            <h3 style="margin-bottom: 15px;">Ingredients</h3>
-            <p style="font-size: 0.9rem; line-height: 1.5; color: var(--text-muted);">
-                ${ingredients_text || 'Ingredients list not available.'}
-            </p>
         </div>
     `;
     lucide.createIcons();
+}
+
+function getProductInsights(product) {
+    const pros = [];
+    const cons = [];
+    const nutriments = product.nutriments || {};
+
+    // Derived Pros
+    if (nutriments.proteins_100g > 10) pros.push("High Protein");
+    if (nutriments.fiber_100g > 5) pros.push("High Fiber");
+    if (product.labels_tags && !product.labels_tags.includes('en:palm-oil')) pros.push("No Palm Oil");
+    if (nutriments.sodium_100g < 0.1) pros.push("Low Sodium");
+    if (pros.length === 0) pros.push("Standard Ingredients");
+
+    // Derived Cons
+    if (nutriments.sugars_100g > 20) cons.push("High Sugar");
+    if (product.additives_n > 5) cons.push("Preservatives");
+    if (product.additives_tags && product.additives_tags.some(t => t.includes('color'))) cons.push("Artificial Color");
+    if (nutriments['saturated-fat_100g'] > 5) cons.push("High Saturated Fat");
+    if (cons.length === 0) cons.push("No Major Concerns");
+
+    // Target Group Logic
+    let best = "General Population";
+    let avoid = "None";
+
+    if (nutriments.proteins_100g > 15) best = "Athletes & Active Adults";
+    if (nutriments.sugars_100g > 25) avoid = "Children & Diabetics";
+    if (product.allergens_tags && product.allergens_tags.length > 3) avoid = "Highly Sensitive Individuals";
+
+    return {
+        pros: pros.slice(0, 3),
+        cons: cons.slice(0, 3),
+        targetGroup: { best, avoid }
+    };
 }
 
 function renderAdditives(tags) {
@@ -210,26 +285,29 @@ function analyzeDietary(product) {
     const ingredients = (product.ingredients_text || '').toLowerCase();
 
     let issues = [];
+    let allergensFound = allergens.map(a => a.replace('en:', '').replace('-', ' ').toUpperCase());
 
     if (profile.vegan && (allergens.includes('en:milk') || allergens.includes('en:eggs') || ingredients.includes('meat') || ingredients.includes('milk'))) {
-        issues.push('Non-Vegan ingredients detected');
+        issues.push('Non-Vegan');
     }
     if (profile.vegetarian && (ingredients.includes('meat') || ingredients.includes('fish'))) {
-        issues.push('Non-Vegetarian ingredients detected');
+        issues.push('Non-Vegetarian');
     }
     if (profile.gluten_free && (allergens.includes('en:gluten') || ingredients.includes('wheat') || ingredients.includes('barley'))) {
-        issues.push('Gluten detected');
+        issues.push('Gluten');
     }
     if (profile.nuts && (allergens.includes('en:nuts') || allergens.includes('en:peanuts') || ingredients.includes('nut'))) {
-        issues.push('Nuts detected');
+        issues.push('Nuts');
     }
     if (profile.dairy && (allergens.includes('en:milk') || ingredients.includes('milk') || ingredients.includes('dairy'))) {
-        issues.push('Dairy detected');
+        issues.push('Dairy');
     }
 
     return {
         isSafe: issues.length === 0,
-        message: issues.length === 0 ? 'Matches your profile preferences.' : issues.join(', ')
+        issues: issues,
+        allergensFound: allergensFound,
+        message: issues.length === 0 ? 'Matches your preferences.' : issues.join(', ')
     };
 }
 
