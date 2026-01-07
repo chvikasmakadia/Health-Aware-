@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Aware Plus - Smart Ingredient Scanner</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <div class="logo">Health Aware+</div>
+            <div class="subtitle">Smart Ingredient Scanner</div>
+        </header>
+
+        <!-- Scanner Section -->
+        <main id="scanner-section" class="section active">
+            <div class="glass-panel">
+                <div id="scanner-container">
+                    <div class="scanner-overlay"></div>
+                    <div class="scanner-line"></div>
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button id="start-scanner-btn" class="glass-panel" style="width: 100%; border-radius: 12px; padding: 12px; background: var(--primary); color: white; border: none; font-weight: 600;">
+                        Start Scanning
+                    </button>
+                    <p class="subtitle" style="margin-top: 10px;">Point your camera at a barcode</p>
+                </div>
+            </div>
+
+            <!-- Manual Entry -->
+            <div class="glass-panel">
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="barcode-input" placeholder="Enter barcode manually..." style="flex: 1; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); padding: 12px; border-radius: 10px; color: white;">
+                    <button id="manual-search-btn" style="background: var(--primary); border: none; padding: 0 15px; border-radius: 10px; color: white;">
+                        <i data-lucide="search"></i>
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Product Details Section -->
+        <main id="product-section" class="section">
+            <div id="product-content">
+                <!-- Content injected via app.js -->
+            </div>
+            <button class="glass-panel back-btn" style="width: 100%; text-align: center; color: var(--text-muted);">
+                Scan Another Product
+            </button>
+        </main>
+
+        <!-- History Section -->
+        <main id="history-section" class="section">
+            <h2 style="margin-bottom: 20px;">Recent Scans</h2>
+            <div id="history-list">
+                <!-- History items injected via app.js -->
+            </div>
+        </main>
+
+        <!-- Profile Section -->
+        <main id="profile-section" class="section">
+            <div class="glass-panel">
+                <h2 style="margin-bottom: 20px;">Personal Profile</h2>
+                <div id="allergen-toggles">
+                    <div class="profile-item">
+                        <span>Vegan</span>
+                        <label class="switch">
+                            <input type="checkbox" id="pref-vegan">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="profile-item">
+                        <span>Vegetarian</span>
+                        <label class="switch">
+                            <input type="checkbox" id="pref-vegetarian">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="profile-item">
+                        <span>Gluten-Free</span>
+                        <label class="switch">
+                            <input type="checkbox" id="pref-gluten_free">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="profile-item">
+                        <span>Nut Allergy</span>
+                        <label class="switch">
+                            <input type="checkbox" id="pref-nuts">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="profile-item">
+                        <span>Dairy-Free</span>
+                        <label class="switch">
+                            <input type="checkbox" id="pref-dairy">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <nav class="nav-bar">
+            <div class="nav-item active" data-target="scanner-section">
+                <i data-lucide="scan"></i>
+                <span>Scan</span>
+            </div>
+            <div class="nav-item" data-target="history-section">
+                <i data-lucide="history"></i>
+                <span>History</span>
+            </div>
+            <div class="nav-item" data-target="profile-section">
+                <i data-lucide="user"></i>
+                <span>Profile</span>
+            </div>
+        </nav>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
