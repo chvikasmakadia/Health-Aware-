@@ -454,12 +454,54 @@ input:checked+.slider:before {
     opacity: 0.9;
 }
 
+.google-btn {
+    background: white;
+    color: #1a1a1b;
+    border: none;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+    font-size: 0.95rem;
+    transition: background 0.2s;
+}
+
+.google-btn:hover {
+    background: #f1f1f1;
+}
+
 .auth-switch {
     text-align: center;
     font-size: 0.85rem;
     color: var(--text-muted);
     cursor: pointer;
-    margin-top: 10px;
+    margin-top: 20px;
+}
+
+.cancel-bar {
+    width: 100%;
+    background: #e5e7eb;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    color: #9ca3af;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background 0.2s;
+    display: block;
+    text-align: center;
+    text-decoration: none;
+}
+
+.cancel-bar:hover {
+    background: #d1d5db;
 }
 
 /* User Profile Header */

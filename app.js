@@ -36,6 +36,16 @@ class AuthManager {
         loadHistory();
     }
 
+    googleLogin() {
+        // Mock Google authentication
+        this.user = { id: Date.now(), email: 'google.user@example.com', name: 'Google User', status: 'Premium' };
+        localStorage.setItem('ha_user', JSON.stringify(this.user));
+        this.updateUI();
+        window.closeAuthModal();
+        loadProfile();
+        loadHistory();
+    }
+
     logout() {
         this.user = null;
         localStorage.removeItem('ha_user');
