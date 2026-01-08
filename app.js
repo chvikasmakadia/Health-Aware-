@@ -171,14 +171,18 @@ async function performOCR() {
 
     try {
         const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
-        console.log("OCR Result:", text);
+        const cleanText = text.trim();
+        console.log("OCR Result:", cleanText);
 
-        // Simple heuristic: search for the first few words as a product name
-        const query = text.trim().split('\n')[0].substring(0, 50);
-        if (query.length > 3) {
-            manualSearch(query);
+        if (cleanText.length < 5) throw new Error("No clear text found");
+
+        // If it's a long text (likely ingredients), analyze directly
+        if (cleanText.includes(',') || cleanText.length > 60) {
+            renderScannedIngredients(cleanText);
         } else {
-            throw new Error("No clear text found");
+            // Likely a product name or barcode text
+            const firstLine = cleanText.split('\n')[0].substring(0, 50);
+            manualSearch(firstLine);
         }
     } catch (err) {
         productDetailsContent.innerHTML = `
@@ -253,6 +257,63 @@ async function fetchProduct(barcode) {
             productDetailsContent.innerHTML = `<div class="glass-panel" style="text-align: center; color: var(--danger); padding: 40px 20px;">Network Error. Check connection.</div>`;
         }
     }
+}
+
+function renderScannedIngredients(text) {
+    const key = authManager.getDataKey('ha_profile');
+    const userProfile = JSON.parse(localStorage.getItem(key)) || profile;
+    const lowerText = text.toLowerCase();
+
+    let issues = [];
+    if (userProfile.vegan && (lowerText.includes('milk') || lowerText.includes('meat') || lowerText.includes('egg') || lowerText.includes('honey'))) issues.push('Non-Vegan');
+    if (userProfile.gluten_free && (lowerText.includes('wheat') || lowerText.includes('gluten') || lowerText.includes('barley') || lowerText.includes('rye'))) issues.push('Gluten');
+    if (userProfile.nuts && (lowerText.includes('nut') || lowerText.includes('almond') || lowerText.includes('peanut') || lowerText.includes('cashew'))) issues.push('Nuts');
+
+    const isSafe = issues.length === 0;
+
+    productDetailsContent.innerHTML = `
+        <div class="detail-box">
+            <div class="box-header">
+                <i data-lucide="camera" size="18" style="color:var(--neon-green)"></i>
+                <span class="box-title">Scanned Ingredients</span>
+            </div>
+            <div class="box-content" style="font-size: 0.9rem; line-height: 1.4; max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 10px;">
+                ${text.replace(/\n/g, '<br>')}
+            </div>
+        </div>
+
+        <div class="detail-box ${isSafe ? '' : 'alert'}">
+            <div class="box-header">
+                <i data-lucide="${isSafe ? 'shield-check' : 'alert-triangle'}" size="18" style="color:${isSafe ? 'var(--neon-green)' : 'var(--warning)'}"></i>
+                <span class="box-title ${isSafe ? '' : 'warning'}">Suggested Analysis</span>
+            </div>
+            <div class="box-content" style="text-align: center; padding: 10px 0;">
+                <div style="font-size: 1.2rem; font-weight: 700; margin-bottom: 5px; color: ${isSafe ? 'var(--neon-green)' : 'var(--warning)'}">
+                    ${isSafe ? 'Looks Safe!' : 'Action Required'}
+                </div>
+                <div class="subtitle">
+                    ${isSafe ? 'No restricted ingredients detected based on your profile.' : 'Potential issues found: ' + issues.join(', ')}
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-box">
+            <div class="box-header">
+                <i data-lucide="info" size="18" style="color:var(--neon-green)"></i>
+                <span class="box-title">Suggestions</span>
+            </div>
+            <div class="box-content">
+                <p style="font-size: 0.85rem; color: var(--text-muted);">
+                    ${isSafe
+            ? 'This product appears to match your dietary preferences. Always double-check for complex chemical names not identified by OCR.'
+            : 'Consider looking for alternatives that do not contain ' + issues.join(' or ') + '.'}
+                </p>
+            </div>
+        </div>
+
+        <button class="auth-btn" style="width: 100%; margin-top: 10px;" onclick="closeProductDetails()">Scan Another</button>
+    `;
+    lucide.createIcons();
 }
 
 async function manualSearch(query) {
