@@ -88,6 +88,7 @@ const productDetailsPage = document.getElementById('product-details-page');
 const productDetailsContent = document.getElementById('product-details-content');
 
 // State
+let currentMode = 'barcode'; // 'barcode' or 'text'
 let profile = {
     vegan: false,
     gluten_free: false,
@@ -129,6 +130,9 @@ function setupScanner() {
 
     startScannerBtn.addEventListener('click', () => {
         if (scanner.getState() === 2) { // Already scanning
+            if (currentMode === 'text') {
+                performOCR();
+            }
             return;
         }
 
@@ -136,14 +140,57 @@ function setupScanner() {
         scanner.start(
             { facingMode: "environment" },
             config,
-            onScanSuccess,
+            (decodedText) => {
+                if (currentMode === 'barcode') onScanSuccess(decodedText);
+            },
             (err) => { }
         ).then(() => {
             console.log("Scanner started");
+            if (currentMode === 'text') {
+                // For OCR, we might need a button to "Capture" or just show a message
+                // The scan button will trigger performOCR if already scanning
+            }
         }).catch(err => {
             displayCameraError(err);
         });
     });
+}
+
+async function performOCR() {
+    const video = document.querySelector('#scanner-container video');
+    if (!video) return;
+
+    // Show loading in details overlay or similar
+    openProductDetails('Analyzing text...');
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    try {
+        const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
+        console.log("OCR Result:", text);
+
+        // Simple heuristic: search for the first few words as a product name
+        const query = text.trim().split('\n')[0].substring(0, 50);
+        if (query.length > 3) {
+            manualSearch(query);
+        } else {
+            throw new Error("No clear text found");
+        }
+    } catch (err) {
+        productDetailsContent.innerHTML = `
+            <div class="glass-panel" style="text-align: center; padding: 40px 20px;">
+                <i data-lucide="type-outline" size="48" style="color: var(--text-muted); margin-bottom: 20px;"></i>
+                <h3>Could not read text</h3>
+                <p class="subtitle">Try focusing more on the product name.</p>
+                <button class="auth-btn" style="margin-top: 20px;" onclick="closeProductDetails()">Try Again</button>
+            </div>
+        `;
+        lucide.createIcons();
+    }
 }
 
 function onScanSuccess(decodedText) {
@@ -205,6 +252,33 @@ async function fetchProduct(barcode) {
         } else {
             productDetailsContent.innerHTML = `<div class="glass-panel" style="text-align: center; color: var(--danger); padding: 40px 20px;">Network Error. Check connection.</div>`;
         }
+    }
+}
+
+async function manualSearch(query) {
+    if (!query) return;
+    openProductDetails(`Searching for "${query}"...`);
+    try {
+        const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1`);
+        const data = await response.json();
+
+        if (data.products && data.products.length > 0) {
+            const product = data.products[0];
+            renderProduct(product);
+            saveToHistory(product);
+        } else {
+            productDetailsContent.innerHTML = `
+                <div class="glass-panel" style="text-align: center; padding: 40px 20px;">
+                    <i data-lucide="search-x" size="48" style="color: var(--text-muted); margin-bottom: 20px;"></i>
+                    <h3>No products found</h3>
+                    <p class="subtitle">Search query: "${query}"</p>
+                    <p class="subtitle" style="margin-top:10px;">Try focusing on the brand or product name directly.</p>
+                </div>
+            `;
+            lucide.createIcons();
+        }
+    } catch (err) {
+        productDetailsContent.innerHTML = `<div class="glass-panel" style="text-align: center; color: var(--danger); padding: 40px 20px;">Search failed. Check connection.</div>`;
     }
 }
 
@@ -406,7 +480,13 @@ function setupEventListeners() {
         item.addEventListener('click', () => {
             toggleItems.forEach(i => i.classList.remove('active'));
             item.classList.add('active');
-            modeToggle.classList.toggle('text-mode', item.getAttribute('data-mode') === 'text');
+            currentMode = item.getAttribute('data-mode');
+            modeToggle.classList.toggle('text-mode', currentMode === 'text');
+
+            // Stop scanner if running to reset UI for new mode
+            if (scanner && scanner.getState() === 2) {
+                scanner.stop();
+            }
         });
     });
 

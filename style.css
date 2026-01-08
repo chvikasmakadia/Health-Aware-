@@ -243,6 +243,24 @@ header {
     box-shadow: 0 0 15px var(--neon-green);
     top: 50%;
     opacity: 0.6;
+    animation: scan 2s ease-in-out infinite;
+}
+
+@keyframes scan {
+    0%, 100% { top: 10%; }
+    50% { top: 90%; }
+}
+
+/* OCR Mode Styles */
+.toggle-container.text-mode + .scanner-card .scanner-frame {
+    height: 120px;
+    width: 85%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.toggle-container.text-mode + .scanner-card .scan-bar {
+    animation-duration: 3s;
 }
 
 .scanner-controls {
