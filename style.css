@@ -247,19 +247,26 @@ header {
 }
 
 @keyframes scan {
-    0%, 100% { top: 10%; }
-    50% { top: 90%; }
+
+    0%,
+    100% {
+        top: 10%;
+    }
+
+    50% {
+        top: 90%;
+    }
 }
 
 /* OCR Mode Styles */
-.toggle-container.text-mode + .scanner-card .scanner-frame {
+.toggle-container.text-mode+.scanner-card .scanner-frame {
     height: 120px;
     width: 85%;
     top: 50%;
     transform: translate(-50%, -50%);
 }
 
-.toggle-container.text-mode + .scanner-card .scan-bar {
+.toggle-container.text-mode+.scanner-card .scan-bar {
     animation-duration: 3s;
 }
 
@@ -839,4 +846,78 @@ input:checked+.toggle-slider:before {
     border-radius: 50px;
     font-weight: 700;
     cursor: pointer;
+}
+
+/* User Profile Styling */
+.user-profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 20px 0;
+}
+
+.user-avatar {
+    width: 80px;
+    height: 80px;
+    background: var(--neon-green);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+    box-shadow: 0 0 20px rgba(0, 255, 106, 0.3);
+}
+
+.user-name {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: white;
+}
+
+.user-status {
+    font-size: 0.9rem;
+    color: var(--neon-green);
+    margin-bottom: 20px;
+    opacity: 0.8;
+}
+
+.logout-btn {
+    background: rgba(255, 68, 68, 0.1);
+    color: #ff6666;
+    border: 1px solid rgba(255, 68, 68, 0.2);
+    padding: 10px 25px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(5px);
+}
+
+.logout-btn:hover {
+    background: rgba(255, 68, 68, 0.2);
+    transform: translateY(-2px);
+}
+
+.preference-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.preference-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.preference-item:last-child {
+    border-bottom: none;
 }

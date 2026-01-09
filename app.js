@@ -15,6 +15,9 @@ class AuthManager {
         this.user = JSON.parse(localStorage.getItem('ha_user')) || null;
         this.token = localStorage.getItem('ha_token') || null;
         this.updateUI();
+        if (this.token) {
+            this.syncFromWP();
+        }
     }
 
     async login(email, password) {
@@ -98,12 +101,18 @@ class AuthManager {
             });
             const data = await response.json();
 
-            if (data.ha_profile) {
-                localStorage.setItem(this.getDataKey('ha_profile'), JSON.stringify(data.ha_profile));
+            // Handle potential variations in WP response structure
+            const profile = data.ha_profile;
+            const history = data.ha_history;
+
+            if (profile && typeof profile === 'object') {
+                localStorage.setItem(this.getDataKey('ha_profile'), JSON.stringify(profile));
             }
-            if (data.ha_history) {
-                localStorage.setItem(this.getDataKey('ha_history'), JSON.stringify(data.ha_history));
+            if (history && Array.isArray(history)) {
+                localStorage.setItem(this.getDataKey('ha_history'), JSON.stringify(history));
             }
+
+            this.updateUI(); // Ensure UI reflects any name changes from sync
             loadProfile();
             loadHistory();
         } catch (err) {
