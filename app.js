@@ -100,12 +100,12 @@ class AuthManager {
 
             if (data.ha_profile) {
                 localStorage.setItem(this.getDataKey('ha_profile'), JSON.stringify(data.ha_profile));
-                loadProfile();
             }
             if (data.ha_history) {
                 localStorage.setItem(this.getDataKey('ha_history'), JSON.stringify(data.ha_history));
-                loadHistory();
             }
+            loadProfile();
+            loadHistory();
         } catch (err) {
             console.error('WP Fetch Error:', err);
         }
@@ -382,8 +382,16 @@ function renderScannedIngredients(text) {
             </div>
         </div>
 
-        <button class="auth-btn" style="width: 100%; margin-top: 10px;" onclick="closeProductDetails()">Scan Another</button>
-    `;
+    saveToHistory({
+        code: 'ocr_' + Date.now(),
+        product_name: 'Ingredient Scan',
+        brands: text.substring(0, 30) + '...',
+        image_front_url: '',
+        nutrition_grades: 'unknown',
+        isOCR: true,
+        ocrText: text
+    });
+
     lucide.createIcons();
 }
 
@@ -392,14 +400,14 @@ async function manualSearch(query) {
     openProductDetails(`Searching for "${query}"...`);
     try {
         const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1`);
-        const data = await response.json();
+    const data = await response.json();
 
-        if (data.products && data.products.length > 0) {
-            const product = data.products[0];
-            renderProduct(product);
-            saveToHistory(product);
-        } else {
-            productDetailsContent.innerHTML = `
+    if (data.products && data.products.length > 0) {
+        const product = data.products[0];
+        renderProduct(product);
+        saveToHistory(product);
+    } else {
+        productDetailsContent.innerHTML = `
                 <div class="glass-panel" style="text-align: center; padding: 40px 20px;">
                     <i data-lucide="search-x" size="48" style="color: var(--text-muted); margin-bottom: 20px;"></i>
                     <h3>No products found</h3>
@@ -407,11 +415,11 @@ async function manualSearch(query) {
                     <p class="subtitle" style="margin-top:10px;">Try focusing on the brand or product name directly.</p>
                 </div>
             `;
-            lucide.createIcons();
-        }
-    } catch (err) {
-        productDetailsContent.innerHTML = `<div class="glass-panel" style="text-align: center; color: var(--danger); padding: 40px 20px;">Search failed. Check connection.</div>`;
+        lucide.createIcons();
     }
+} catch (err) {
+    productDetailsContent.innerHTML = `<div class="glass-panel" style="text-align: center; color: var(--danger); padding: 40px 20px;">Search failed. Check connection.</div>`;
+}
 }
 
 // UI Rendering
@@ -554,8 +562,9 @@ function saveToHistory(product) {
         fullData: product,
         time: 'Just now'
     });
-    localStorage.setItem(key, JSON.stringify(history.slice(0, 20)));
-    authManager.syncToWP('ha_history', history.slice(0, 20));
+    const maxItems = 50;
+    localStorage.setItem(key, JSON.stringify(history.slice(0, maxItems)));
+    authManager.syncToWP('ha_history', history.slice(0, maxItems));
     loadHistory();
 }
 
@@ -585,7 +594,7 @@ function loadHistory() {
                 <div style="font-weight: 600;">${item.name || 'Unknown'}</div>
                 <div class="subtitle">${item.brand || 'No Brand'}</div>
              </div>
-             <div class="nutri-badge nutri-${(item.score || 'e').toLowerCase()}" style="width: 24px; height: 24px;">${(item.score || 'E').toUpperCase()}</div>
+             <div class="nutri-badge nutri-${(item.score || 'e').toLowerCase()}" style="width: 24px; height: 24px;">${item.score === 'unknown' ? '?' : (item.score || 'E').toUpperCase()}</div>
         </div>
     `).join('') || '<p class="subtitle" style="text-align: center;">History empty.</p>';
 
