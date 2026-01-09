@@ -381,6 +381,7 @@ function renderScannedIngredients(text) {
                 </p>
             </div>
         </div>
+    `;
 
     saveToHistory({
         code: 'ocr_' + Date.now(),
@@ -400,14 +401,14 @@ async function manualSearch(query) {
     openProductDetails(`Searching for "${query}"...`);
     try {
         const response = await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&action=process&json=1`);
-    const data = await response.json();
+        const data = await response.json();
 
-    if (data.products && data.products.length > 0) {
-        const product = data.products[0];
-        renderProduct(product);
-        saveToHistory(product);
-    } else {
-        productDetailsContent.innerHTML = `
+        if (data.products && data.products.length > 0) {
+            const product = data.products[0];
+            renderProduct(product);
+            saveToHistory(product);
+        } else {
+            productDetailsContent.innerHTML = `
                 <div class="glass-panel" style="text-align: center; padding: 40px 20px;">
                     <i data-lucide="search-x" size="48" style="color: var(--text-muted); margin-bottom: 20px;"></i>
                     <h3>No products found</h3>
@@ -415,11 +416,11 @@ async function manualSearch(query) {
                     <p class="subtitle" style="margin-top:10px;">Try focusing on the brand or product name directly.</p>
                 </div>
             `;
-        lucide.createIcons();
+            lucide.createIcons();
+        }
+    } catch (err) {
+        productDetailsContent.innerHTML = `<div class="glass-panel" style="text-align: center; color: var(--danger); padding: 40px 20px;">Search failed. Check connection.</div>`;
     }
-} catch (err) {
-    productDetailsContent.innerHTML = `<div class="glass-panel" style="text-align: center; color: var(--danger); padding: 40px 20px;">Search failed. Check connection.</div>`;
-}
 }
 
 // UI Rendering
@@ -662,3 +663,11 @@ function setupEventListeners() {
         if (code) fetchProduct(code);
     });
 }
+
+// Global Exports for Inline HTML onclicks
+window.showSection = showSection;
+window.fetchProduct = fetchProduct;
+window.openProductDetails = openProductDetails;
+window.closeProductDetails = closeProductDetails;
+window.renderScannedIngredients = renderScannedIngredients;
+window.manualSearch = manualSearch;
