@@ -1,4 +1,5 @@
 const API_BASE = 'https://world.openfoodfacts.org/api/v2/product/';
+const WP_BASE_URL = 'https://creativehustlers.staging-buddy.in';
 let scanner = null;
 
 // Auth Helper Functions
@@ -9,49 +10,119 @@ window.toggleAuthView = (view) => {
     document.getElementById('register-view').style.display = view === 'register' ? 'block' : 'none';
 };
 
-// Auth Manager
 class AuthManager {
     constructor() {
         this.user = JSON.parse(localStorage.getItem('ha_user')) || null;
+        this.token = localStorage.getItem('ha_token') || null;
         this.updateUI();
     }
 
-    login(email, password) {
-        this.user = { id: Date.now(), email, name: email.split('@')[0], status: 'Premium' };
-        localStorage.setItem('ha_user', JSON.stringify(this.user));
-        this.updateUI();
-        window.closeAuthModal();
-        loadProfile();
-        loadHistory();
+    async login(email, password) {
+        try {
+            openProductDetails('Authenticating...');
+            const response = await fetch(`${WP_BASE_URL}/wp-json/jwt-auth/v1/token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: email, password: password })
+            });
+            const data = await response.json();
+
+            if (data.token) {
+                this.token = data.token;
+                this.user = {
+                    id: data.user_id || Date.now(),
+                    email: data.user_email,
+                    name: data.user_display_name || email.split('@')[0],
+                    status: 'Premium'
+                };
+                localStorage.setItem('ha_user', JSON.stringify(this.user));
+                localStorage.setItem('ha_token', this.token);
+
+                await this.syncFromWP();
+                this.updateUI();
+                window.closeAuthModal();
+                closeProductDetails();
+            } else {
+                throw new Error(data.message || 'Login failed');
+            }
+        } catch (err) {
+            alert(err.message);
+            closeProductDetails();
+        }
     }
 
-    register(name, email, password) {
-        this.user = { id: Date.now(), email, name, status: 'Premium' };
-        localStorage.setItem('ha_user', JSON.stringify(this.user));
-        this.updateUI();
-        window.closeAuthModal();
-        loadProfile();
-        loadHistory();
+    async register(name, email, password) {
+        try {
+            openProductDetails('Creating account...');
+            const response = await fetch(`${WP_BASE_URL}/wp-json/health-aware/v1/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: email, email, password, display_name: name })
+            });
+            const data = await response.json();
+
+            if (data.status === 'success' || data.id) {
+                // After registration, log them in
+                await this.login(email, password);
+            } else {
+                throw new Error(data.message || 'Registration failed');
+            }
+        } catch (err) {
+            alert(err.message);
+            closeProductDetails();
+        }
     }
 
-    googleLogin() {
-        this.user = { id: Date.now(), email: 'google.user@example.com', name: 'Google User', status: 'Premium' };
-        localStorage.setItem('ha_user', JSON.stringify(this.user));
-        this.updateUI();
-        window.closeAuthModal();
-        loadProfile();
-        loadHistory();
+    async syncToWP(key, value) {
+        if (!this.token) return;
+        try {
+            const field = key.includes('history') ? 'ha_history' : 'ha_profile';
+            await fetch(`${WP_BASE_URL}/wp-json/wp/v2/users/me`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${this.token}`
+                },
+                body: JSON.stringify({ [field]: value })
+            });
+        } catch (err) {
+            console.error('WP Sync Error:', err);
+        }
+    }
+
+    async syncFromWP() {
+        if (!this.token) return;
+        try {
+            const response = await fetch(`${WP_BASE_URL}/wp-json/wp/v2/users/me?context=edit`, {
+                headers: { 'Authorization': `Bearer ${this.token}` }
+            });
+            const data = await response.json();
+
+            if (data.ha_profile) {
+                localStorage.setItem(this.getDataKey('ha_profile'), JSON.stringify(data.ha_profile));
+                loadProfile();
+            }
+            if (data.ha_history) {
+                localStorage.setItem(this.getDataKey('ha_history'), JSON.stringify(data.ha_history));
+                loadHistory();
+            }
+        } catch (err) {
+            console.error('WP Fetch Error:', err);
+        }
     }
 
     logout() {
         this.user = null;
+        this.token = null;
         localStorage.removeItem('ha_user');
+        localStorage.removeItem('ha_token');
         this.updateUI();
         loadProfile();
         loadHistory();
         showSection('scan-section');
     }
 
+    // Existing updateUI and getDataKey methods...
     updateUI() {
         const guestView = document.getElementById('guest-profile');
         const userView = document.getElementById('user-profile');
@@ -484,6 +555,7 @@ function saveToHistory(product) {
         time: 'Just now'
     });
     localStorage.setItem(key, JSON.stringify(history.slice(0, 20)));
+    authManager.syncToWP('ha_history', history.slice(0, 20));
     loadHistory();
 }
 
@@ -570,6 +642,7 @@ function setupEventListeners() {
                 profile[k] = e.target.checked;
                 const key = authManager.getDataKey('ha_profile');
                 localStorage.setItem(key, JSON.stringify(profile));
+                authManager.syncToWP('ha_profile', profile);
                 loadProfile();
             });
         }
